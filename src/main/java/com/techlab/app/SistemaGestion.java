@@ -1,0 +1,224 @@
+package com.techlab.app;
+
+import com.techlab.modelo.Pedido;
+import com.techlab.modelo.Producto;
+import com.techlab.servicio.GestionProductosPedidos;
+
+import java.util.List;
+import java.util.Scanner;
+
+public class SistemaGestion {
+    private static Scanner scanner = new Scanner(System.in);
+    private static GestionProductosPedidos gestion = new GestionProductosPedidos();
+
+    public static void main(String[] args) {
+        boolean salir = false;
+        while (!salir) {
+            mostrarMenu();
+            int opcion = leerEntero("Elija una opción: ");
+            switch (opcion) {
+                case 1 -> agregarProducto();
+                case 2 -> listarProductos();
+                case 3 -> buscarActualizarProducto();
+                case 4 -> eliminarProducto();
+                case 5 -> crearPedido();
+                case 6 -> listarPedidos();
+                case 7 -> {
+                    System.out.println("Saliendo del sistema. ¡Hasta luego!");
+                    salir = true;
+                }
+                default -> System.out.println("Opción inválida. Intente nuevamente.");
+            }
+        }
+    }
+
+    private static void mostrarMenu() {
+        System.out.println("\n=================================== SISTEMA DE GESTIÓN - TECHLAB ==================================");
+        System.out.println("1) Agregar producto");
+        System.out.println("2) Listar productos");
+        System.out.println("3) Buscar/Actualizar producto");
+        System.out.println("4) Eliminar producto");
+        System.out.println("5) Crear un pedido");
+        System.out.println("6) Listar pedidos");
+        System.out.println("7) Salir");
+    }
+
+    private static void agregarProducto() {
+        System.out.println("\n--- Agregar Producto ---");
+        System.out.print("Nombre: ");
+        String nombre = scanner.nextLine();
+
+        double precio = leerDouble("Precio: ");
+        int stock = leerEntero("Cantidad en stock: ");
+
+        gestion.agregarProducto(nombre, precio, stock);
+        System.out.println("Producto agregado correctamente.");
+    }
+
+    private static void listarProductos() {
+        System.out.println("\n--- Lista de Productos ---");
+        List<Producto> productos = gestion.listarProductos();
+        if (productos.isEmpty()) {
+            System.out.println("No hay productos registrados.");
+            return;
+        }
+        for (Producto p : productos) {
+            System.out.println(p.toString());
+        }
+    }
+
+    private static void buscarActualizarProducto() {
+        System.out.println("\n--- Buscar/Actualizar Producto ---");
+        int id = leerEntero("Ingrese ID del producto a buscar: ");
+        Producto producto = gestion.buscarProductoPorId(id);
+        if (producto == null) {
+            System.out.println("Producto no encontrado.");
+            return;
+        }
+        System.out.println("Producto encontrado: " + producto.toString());
+
+        System.out.print("¿Desea actualizar precio y stock? (s/n): ");
+        String respuesta = scanner.nextLine().trim().toLowerCase();
+        if (respuesta.equals("s")) {
+            double nuevoPrecio = leerDouble("Nuevo precio: ");
+            int nuevoStock = leerEntero("Nuevo stock: ");
+            boolean actualizado = gestion.actualizarProducto(id, nuevoPrecio, nuevoStock);
+            if (actualizado) {
+                System.out.println("Producto actualizado correctamente.");
+            } else {
+                System.out.println("Error al actualizar producto. Verifique los valores.");
+            }
+        }
+    }
+
+    private static void eliminarProducto() {
+        System.out.println("\n--- Eliminar Producto ---");
+        int id = leerEntero("Ingrese ID del producto a eliminar: ");
+        Producto producto = gestion.buscarProductoPorId(id);
+        if (producto == null) {
+            System.out.println("Producto no encontrado.");
+            return;
+        }
+        System.out.println("Producto encontrado: " + producto.toString());
+        System.out.print("¿Confirma eliminación? (s/n): ");
+        String confirmar = scanner.nextLine().trim().toLowerCase();
+        if (confirmar.equals("s")) {
+            boolean eliminado = gestion.eliminarProducto(id);
+            if (eliminado) {
+                System.out.println("Producto eliminado.");
+            } else {
+                System.out.println("Error al eliminar producto.");
+            }
+        } else {
+            System.out.println("Eliminación cancelada.");
+        }
+    }
+
+    private static void crearPedido() {
+        System.out.println("\n--- Crear Pedido ---");
+        List<Producto> productos = gestion.listarProductos();
+        if (productos.isEmpty()) {
+            System.out.println("No hay productos disponibles para pedir.");
+            return;
+        }
+
+        Pedido pedido = gestion.crearPedido();
+        boolean agregarMas = true;
+
+        while (agregarMas) {
+            listarProductos();
+            int idProducto = leerEntero("Ingrese ID del producto a agregar al pedido: ");
+            Producto producto = gestion.buscarProductoPorId(idProducto);
+            if (producto == null) {
+                System.out.println("Producto no encontrado.");
+                continue;
+            }
+            System.out.println("Producto seleccionado: " + producto.toString());
+            int cantidad = leerEntero("Cantidad deseada: ");
+            if (cantidad <= 0) {
+                System.out.println("Cantidad debe ser mayor a 0.");
+                continue;
+            }
+            if (cantidad > producto.getStock()) {
+                System.out.println("No hay suficiente stock. Stock disponible: " + producto.getStock());
+                continue;
+            }
+            boolean agregado = gestion.agregarLineaPedido(pedido, idProducto, cantidad);
+            if (agregado) {
+                System.out.println("Producto agregado al pedido.");
+            } else {
+                System.out.println("Error al agregar producto al pedido.");
+            }
+
+            System.out.print("¿Desea agregar otro producto al pedido? (s/n): ");
+            String resp = scanner.nextLine().trim().toLowerCase();
+            agregarMas = resp.equals("s");
+        }
+
+        if (pedido.getLineas().isEmpty()) {
+            System.out.println("Pedido vacío, no se creó.");
+            return;
+        }
+
+        System.out.printf("Costo total del pedido: %.2f\n", pedido.calcularTotal());
+        System.out.print("¿Confirma el pedido? (s/n): ");
+        String confirmar = scanner.nextLine().trim().toLowerCase();
+        if (confirmar.equals("s")) {
+            boolean confirmado = gestion.confirmarPedido(pedido);
+            if (confirmado) {
+                System.out.println("Pedido confirmado y guardado.");
+            } else {
+                System.out.println("No se pudo confirmar el pedido. Verifique stock.");
+            }
+        } else {
+            System.out.println("Pedido cancelado.");
+        }
+    }
+
+    private static void listarPedidos() {
+        System.out.println("\n--- Lista de Pedidos ---");
+        List<Pedido> pedidos = gestion.listarPedidos();
+        if (pedidos.isEmpty()) {
+            System.out.println("No hay pedidos realizados.");
+            return;
+        }
+        for (Pedido p : pedidos) {
+            p.mostrarPedido();
+            System.out.println("----------------------------");
+        }
+    }
+
+    // Métodos auxiliares para lectura segura
+
+    private static int leerEntero(String mensaje) {
+        int valor = -1;
+        while (true) {
+            try {
+                System.out.print(mensaje);
+                valor = Integer.parseInt(scanner.nextLine());
+                break;
+            } catch (NumberFormatException e) {
+                System.out.println("Entrada inválida. Por favor, ingrese un número entero.");
+            }
+        }
+        return valor;
+    }
+
+    private static double leerDouble(String mensaje) {
+        double valor = -1;
+        while (true) {
+            try {
+                System.out.print(mensaje);
+                valor = Double.parseDouble(scanner.nextLine());
+                if (valor < 0) {
+                    System.out.println("El valor no puede ser negativo.");
+                    continue;
+                }
+                break;
+            } catch (NumberFormatException e) {
+                System.out.println("Entrada inválida. Por favor, ingrese un número decimal válido.");
+            }
+        }
+        return valor;
+    }
+}
