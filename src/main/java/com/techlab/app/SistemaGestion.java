@@ -69,6 +69,10 @@ public class SistemaGestion {
 
     private static void buscarActualizarProducto() {
         System.out.println("\n--- Buscar/Actualizar Producto ---");
+
+        // Listar productos antes de pedir el ID
+        listarProductos();
+
         int id = leerEntero("Ingrese ID del producto a buscar: ");
         Producto producto = gestion.buscarProductoPorId(id);
         if (producto == null) {
@@ -77,8 +81,18 @@ public class SistemaGestion {
         }
         System.out.println("Producto encontrado: " + producto.toString());
 
-        System.out.print("¿Desea actualizar precio y stock? (s/n): ");
-        String respuesta = scanner.nextLine().trim().toLowerCase();
+        // Validar la entrada del usuario para la actualización del producto
+        String respuesta;
+        boolean entradaValida;
+        do {
+            System.out.print("¿Desea actualizar precio y stock? (s/n): ");
+            respuesta = scanner.nextLine().trim().toLowerCase();
+            entradaValida = respuesta.equals("s") || respuesta.equals("n");
+            if (!entradaValida) {
+                System.out.println("Entrada inválida. Por favor, ingrese 's' para sí o 'n' para no.");
+            }
+        } while (!entradaValida);
+
         if (respuesta.equals("s")) {
             double nuevoPrecio = leerDouble("Nuevo precio: ");
             int nuevoStock = leerEntero("Nuevo stock: ");
@@ -93,6 +107,10 @@ public class SistemaGestion {
 
     private static void eliminarProducto() {
         System.out.println("\n--- Eliminar Producto ---");
+
+        // Listar productos antes de pedir el ID
+        listarProductos();
+
         int id = leerEntero("Ingrese ID del producto a eliminar: ");
         Producto producto = gestion.buscarProductoPorId(id);
         if (producto == null) {
@@ -100,8 +118,19 @@ public class SistemaGestion {
             return;
         }
         System.out.println("Producto encontrado: " + producto.toString());
-        System.out.print("¿Confirma eliminación? (s/n): ");
-        String confirmar = scanner.nextLine().trim().toLowerCase();
+
+        // Validar la entrada del usuario para la confirmación de la eliminación
+        String confirmar;
+        boolean entradaValida;
+        do {
+            System.out.print("¿Confirma eliminación? (s/n): ");
+            confirmar = scanner.nextLine().trim().toLowerCase();
+            entradaValida = confirmar.equals("s") || confirmar.equals("n");
+            if (!entradaValida) {
+                System.out.println("Entrada inválida. Por favor, ingrese 's' para sí o 'n' para no.");
+            }
+        } while (!entradaValida);
+
         if (confirmar.equals("s")) {
             boolean eliminado = gestion.eliminarProducto(id);
             if (eliminado) {
@@ -150,8 +179,17 @@ public class SistemaGestion {
                 System.out.println("Error al agregar producto al pedido.");
             }
 
-            System.out.print("¿Desea agregar otro producto al pedido? (s/n): ");
-            String resp = scanner.nextLine().trim().toLowerCase();
+            // Corrección: Validar la entrada del usuario para agregar otro producto
+            String resp;
+            boolean entradaValida;
+            do {
+                System.out.print("¿Desea agregar otro producto al pedido? (s/n): ");
+                resp = scanner.nextLine().trim().toLowerCase();
+                entradaValida = resp.equals("s") || resp.equals("n");
+                if (!entradaValida) {
+                    System.out.println("Entrada inválida. Por favor, ingrese 's' para sí o 'n' para no.");
+                }
+            } while (!entradaValida);
             agregarMas = resp.equals("s");
         }
 
@@ -161,8 +199,20 @@ public class SistemaGestion {
         }
 
         System.out.printf("Costo total del pedido: %.2f\n", pedido.calcularTotal());
-        System.out.print("¿Confirma el pedido? (s/n): ");
-        String confirmar = scanner.nextLine().trim().toLowerCase();
+
+        // Corrección: Validar la entrada del usuario para la confirmación del pedido
+        String confirmar;
+        boolean entradaValidaConfirmar;
+        do {
+            System.out.print("¿Confirma el pedido? (s/n): ");
+            confirmar = scanner.nextLine().trim().toLowerCase();
+            entradaValidaConfirmar = confirmar.equals("s") || confirmar.equals("n");
+            if (!entradaValidaConfirmar) {
+                System.out.println("Entrada inválida. Por favor, ingrese 's' para sí o 'n' para no.");
+            }
+        } while (!entradaValidaConfirmar);
+
+
         if (confirmar.equals("s")) {
             boolean confirmado = gestion.confirmarPedido(pedido);
             if (confirmado) {
