@@ -66,3 +66,8 @@ Si necesitas agregar persistencia (guardar en archivos), puedes extender la clas
 🖥️ Contribución
 ¡Pull requests y sugerencias son bienvenidas!
 
+## 📄 Licencia
+
+Este proyecto fue desarrollado por Claudia Oliverio.  
+
+
