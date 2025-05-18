@@ -1,4 +1,4 @@
-package com.techlab.app;
+package com.techlab.main;
 
 import com.techlab.modelo.Pedido;
 import com.techlab.modelo.Producto;
@@ -30,6 +30,7 @@ public class SistemaGestion {
                 default -> System.out.println("Opción inválida. Intente nuevamente.");
             }
         }
+        scanner.close();
     }
 
     private static void mostrarMenu() {
@@ -50,9 +51,12 @@ public class SistemaGestion {
 
         double precio = leerDouble("Precio: ");
         int stock = leerEntero("Cantidad en stock: ");
-
-        gestion.agregarProducto(nombre, precio, stock);
-        System.out.println("Producto agregado correctamente.");
+        try {
+            gestion.agregarProducto(nombre, precio, stock);
+            System.out.println("Producto agregado correctamente.");
+        } catch (IllegalArgumentException e) {
+            System.out.println("Error: " + e.getMessage());
+        }
     }
 
     private static void listarProductos() {
@@ -63,25 +67,21 @@ public class SistemaGestion {
             return;
         }
         for (Producto p : productos) {
-            System.out.println(p.toString());
+            System.out.println(p);
         }
     }
 
     private static void buscarActualizarProducto() {
         System.out.println("\n--- Buscar/Actualizar Producto ---");
-
-        // Listar productos antes de pedir el ID
         listarProductos();
-
         int id = leerEntero("Ingrese ID del producto a buscar: ");
         Producto producto = gestion.buscarProductoPorId(id);
         if (producto == null) {
             System.out.println("Producto no encontrado.");
             return;
         }
-        System.out.println("Producto encontrado: " + producto.toString());
+        System.out.println("Producto encontrado: " + producto);
 
-        // Validar la entrada del usuario para la actualización del producto
         String respuesta;
         boolean entradaValida;
         do {
@@ -107,19 +107,15 @@ public class SistemaGestion {
 
     private static void eliminarProducto() {
         System.out.println("\n--- Eliminar Producto ---");
-
-        // Listar productos antes de pedir el ID
         listarProductos();
-
         int id = leerEntero("Ingrese ID del producto a eliminar: ");
         Producto producto = gestion.buscarProductoPorId(id);
         if (producto == null) {
             System.out.println("Producto no encontrado.");
             return;
         }
-        System.out.println("Producto encontrado: " + producto.toString());
+        System.out.println("Producto encontrado: " + producto);
 
-        // Validar la entrada del usuario para la confirmación de la eliminación
         String confirmar;
         boolean entradaValida;
         do {
@@ -152,18 +148,28 @@ public class SistemaGestion {
         }
 
         Pedido pedido = gestion.crearPedido();
-        boolean agregarMas = true;
+        boolean agregoAlgo = false;
 
-        while (agregarMas) {
+        while (true) {
             listarProductos();
-            int idProducto = leerEntero("Ingrese ID del producto a agregar al pedido: ");
+            System.out.println("Ingrese ID del producto a agregar al pedido (o 0 para cancelar y salir): ");
+            int idProducto = leerEntero("> ");
+            if (idProducto == 0) {
+                // Permite cancelar la carga del pedido en cualquier momento
+                break;
+            }
             Producto producto = gestion.buscarProductoPorId(idProducto);
             if (producto == null) {
                 System.out.println("Producto no encontrado.");
                 continue;
             }
-            System.out.println("Producto seleccionado: " + producto.toString());
-            int cantidad = leerEntero("Cantidad deseada: ");
+            System.out.println("Producto seleccionado: " + producto);
+            System.out.println("Ingrese cantidad deseada (o 0 para cancelar y salir): ");
+            int cantidad = leerEntero("> ");
+            if (cantidad == 0) {
+                // Permite cancelar la carga del pedido en cualquier momento
+                break;
+            }
             if (cantidad <= 0) {
                 System.out.println("Cantidad debe ser mayor a 0.");
                 continue;
@@ -175,32 +181,23 @@ public class SistemaGestion {
             boolean agregado = gestion.agregarLineaPedido(pedido, idProducto, cantidad);
             if (agregado) {
                 System.out.println("Producto agregado al pedido.");
+                agregoAlgo = true;
             } else {
                 System.out.println("Error al agregar producto al pedido.");
             }
 
-            // Corrección: Validar la entrada del usuario para agregar otro producto
-            String resp;
-            boolean entradaValida;
-            do {
-                System.out.print("¿Desea agregar otro producto al pedido? (s/n): ");
-                resp = scanner.nextLine().trim().toLowerCase();
-                entradaValida = resp.equals("s") || resp.equals("n");
-                if (!entradaValida) {
-                    System.out.println("Entrada inválida. Por favor, ingrese 's' para sí o 'n' para no.");
-                }
-            } while (!entradaValida);
-            agregarMas = resp.equals("s");
+            // Preguntar si desea agregar otro producto
+            if (!confirmarAccion("¿Desea agregar otro producto al pedido?")) {
+                break;
+            }
         }
 
-        if (pedido.getLineas().isEmpty()) {
-            System.out.println("Pedido vacío, no se creó.");
+        if (!agregoAlgo || pedido.getLineas().isEmpty()) {
+            System.out.println("Pedido vacío o cancelado, no se creó.");
             return;
         }
 
         System.out.printf("Costo total del pedido: %.2f\n", pedido.calcularTotal());
-
-        // Corrección: Validar la entrada del usuario para la confirmación del pedido
         String confirmar;
         boolean entradaValidaConfirmar;
         do {
@@ -212,13 +209,16 @@ public class SistemaGestion {
             }
         } while (!entradaValidaConfirmar);
 
-
         if (confirmar.equals("s")) {
-            boolean confirmado = gestion.confirmarPedido(pedido);
-            if (confirmado) {
-                System.out.println("Pedido confirmado y guardado.");
-            } else {
-                System.out.println("No se pudo confirmar el pedido. Verifique stock.");
+            try {
+                boolean confirmado = gestion.confirmarPedido(pedido);
+                if (confirmado) {
+                    System.out.println("Pedido confirmado y guardado.");
+                } else {
+                    System.out.println("No se pudo confirmar el pedido. Verifique stock.");
+                }
+            } catch (IllegalArgumentException e) {
+                System.out.println("Error al confirmar pedido: " + e.getMessage());
             }
         } else {
             System.out.println("Pedido cancelado.");
@@ -270,5 +270,16 @@ public class SistemaGestion {
             }
         }
         return valor;
+    }
+
+    private static boolean confirmarAccion(String mensaje) {
+        String respuesta;
+        do {
+            System.out.print(mensaje + " (s/n): ");
+            respuesta = scanner.nextLine().trim().toLowerCase();
+            if (respuesta.equals("s")) return true;
+            if (respuesta.equals("n")) return false;
+            System.out.println("Entrada inválida. Por favor, ingrese 's' o 'n'.");
+        } while (true);
     }
 }

@@ -13,16 +13,11 @@ public class Pedido {
         this.lineas = new ArrayList<>();
     }
 
-    public int getIdPedido() {
-        return idPedido;
-    }
+    public int getIdPedido() { return idPedido; }
+    public List<LineaPedido> getLineas() { return lineas; }
 
     public void agregarLinea(LineaPedido linea) {
         lineas.add(linea);
-    }
-
-    public List<LineaPedido> getLineas() {
-        return lineas;
     }
 
     public double calcularTotal() {

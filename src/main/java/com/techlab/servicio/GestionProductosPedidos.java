@@ -5,7 +5,9 @@ import com.techlab.modelo.Pedido;
 import com.techlab.modelo.Producto;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class GestionProductosPedidos {
     private List<Producto> productos;
@@ -16,18 +18,18 @@ public class GestionProductosPedidos {
         this.pedidos = new ArrayList<>();
     }
 
-    // Agregar producto
     public void agregarProducto(String nombre, double precio, int stock) {
+        if (buscarProductoPorNombre(nombre) != null) {
+            throw new IllegalArgumentException("Ya existe un producto con ese nombre.");
+        }
         Producto p = new Producto(nombre, precio, stock);
         productos.add(p);
     }
 
-    // Listar productos
     public List<Producto> listarProductos() {
         return productos;
     }
 
-    // Buscar producto por ID
     public Producto buscarProductoPorId(int id) {
         for (Producto p : productos) {
             if (p.getId() == id) {
@@ -37,7 +39,6 @@ public class GestionProductosPedidos {
         return null;
     }
 
-    // Buscar producto por nombre (retorna el primero que coincida)
     public Producto buscarProductoPorNombre(String nombre) {
         for (Producto p : productos) {
             if (p.getNombre().equalsIgnoreCase(nombre)) {
@@ -47,18 +48,26 @@ public class GestionProductosPedidos {
         return null;
     }
 
-    // Actualizar producto (precio y stock)
+    // Búsqueda flexible por ID o nombre
+    public Producto buscarProductoPorIdONombre(String entrada) {
+        try {
+            int id = Integer.parseInt(entrada);
+            return buscarProductoPorId(id);
+        } catch (NumberFormatException e) {
+            return buscarProductoPorNombre(entrada);
+        }
+    }
+
     public boolean actualizarProducto(int id, double nuevoPrecio, int nuevoStock) {
         Producto p = buscarProductoPorId(id);
-        if (p != null && nuevoPrecio >= 0 && nuevoStock >= 0) {
-            p.setPrecio(nuevoPrecio);
-            p.setStock(nuevoStock);
+        if (p != null) {
+            if (nuevoPrecio >= 0) p.setPrecio(nuevoPrecio);
+            if (nuevoStock >= 0) p.setStock(nuevoStock);
             return true;
         }
         return false;
     }
 
-    // Eliminar producto por ID
     public boolean eliminarProducto(int id) {
         Producto p = buscarProductoPorId(id);
         if (p != null) {
@@ -68,33 +77,65 @@ public class GestionProductosPedidos {
         return false;
     }
 
-    // Crear pedido
     public Pedido crearPedido() {
         return new Pedido();
     }
 
-    // Agregar línea al pedido
+    /**
+     * Si el producto ya está en el pedido, suma la cantidad.
+     * Si no, agrega una nueva línea.
+     * Así se evita tener varias líneas del mismo producto en el pedido.
+     */
     public boolean agregarLineaPedido(Pedido pedido, int idProducto, int cantidad) {
         Producto p = buscarProductoPorId(idProducto);
         if (p != null && cantidad > 0 && cantidad <= p.getStock()) {
-            LineaPedido linea = new LineaPedido(p, cantidad);
-            pedido.agregarLinea(linea);
+            // Buscar si ya existe una línea para este producto
+            LineaPedido existente = null;
+            for (LineaPedido linea : pedido.getLineas()) {
+                if (linea.getProducto().getId() == idProducto) {
+                    existente = linea;
+                    break;
+                }
+            }
+            if (existente != null) {
+                int nuevaCantidad = existente.getCantidad() + cantidad;
+                if (nuevaCantidad > p.getStock()) {
+                    return false; // No hay suficiente stock
+                }
+                pedido.getLineas().remove(existente);
+                pedido.agregarLinea(new LineaPedido(p, nuevaCantidad));
+            } else {
+                pedido.agregarLinea(new LineaPedido(p, cantidad));
+            }
             return true;
         }
         return false;
     }
 
-    // Confirmar pedido: descontar stock y guardar pedido
+    /**
+     * Al confirmar el pedido:
+     * - Suma la cantidad total pedida de cada producto (por si se agregó varias veces el mismo producto).
+     * - Verifica que no supere el stock disponible.
+     * - Si todo está bien, descuenta el stock y guarda el pedido.
+     */
     public boolean confirmarPedido(Pedido pedido) {
-        if (pedido.getLineas().isEmpty()) {
-            return false;
-        }
-        // Verificar stock suficiente antes de descontar
+        if (pedido.getLineas().isEmpty()) return false;
+
+        // Sumar cantidades por producto
+        Map<Producto, Integer> cantidadesPorProducto = new HashMap<>();
         for (LineaPedido linea : pedido.getLineas()) {
-            if (linea.getCantidad() > linea.getProducto().getStock()) {
-                return false;
+            cantidadesPorProducto.merge(linea.getProducto(), linea.getCantidad(), Integer::sum);
+        }
+
+        // Verificar stock suficiente para cada producto
+        for (Map.Entry<Producto, Integer> entry : cantidadesPorProducto.entrySet()) {
+            Producto producto = entry.getKey();
+            int cantidadTotal = entry.getValue();
+            if (cantidadTotal > producto.getStock()) {
+                throw new IllegalArgumentException("Stock insuficiente para el producto: " + producto.getNombre());
             }
         }
+
         // Descontar stock
         for (LineaPedido linea : pedido.getLineas()) {
             linea.getProducto().disminuirStock(linea.getCantidad());
@@ -103,7 +144,6 @@ public class GestionProductosPedidos {
         return true;
     }
 
-    // Listar pedidos
     public List<Pedido> listarPedidos() {
         return pedidos;
     }
