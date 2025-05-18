@@ -12,6 +12,7 @@ public class SistemaGestion {
     private static GestionProductosPedidos gestion = new GestionProductosPedidos();
 
     public static void main(String[] args) {
+        cargarProductosFijos(); // Cargar productos fijos al iniciar
         boolean salir = false;
         while (!salir) {
             mostrarMenu();
@@ -31,6 +32,12 @@ public class SistemaGestion {
             }
         }
         scanner.close();
+    }
+
+    // Carga productos fijos al inicio
+    private static void cargarProductosFijos() {
+        try { gestion.agregarProducto("monitor", 1000, 10); } catch (Exception ignored) {}
+        try { gestion.agregarProducto("micrófono", 2000, 10); } catch (Exception ignored) {}
     }
 
     private static void mostrarMenu() {
@@ -85,7 +92,7 @@ public class SistemaGestion {
         String respuesta;
         boolean entradaValida;
         do {
-            System.out.print("¿Desea actualizar precio y stock? (s/n): ");
+            System.out.print("¿Desea actualizar precio y sumar stock? (s/n): ");
             respuesta = scanner.nextLine().trim().toLowerCase();
             entradaValida = respuesta.equals("s") || respuesta.equals("n");
             if (!entradaValida) {
@@ -95,12 +102,35 @@ public class SistemaGestion {
 
         if (respuesta.equals("s")) {
             double nuevoPrecio = leerDouble("Nuevo precio: ");
-            int nuevoStock = leerEntero("Nuevo stock: ");
-            boolean actualizado = gestion.actualizarProducto(id, nuevoPrecio, nuevoStock);
-            if (actualizado) {
-                System.out.println("Producto actualizado correctamente.");
+            int stockASumar = leerEntero("¿Cuánto stock desea sumar?: ");
+            int nuevoStock = producto.getStock() + stockASumar;
+
+            // Mostrar resumen antes de confirmar
+            System.out.println("\nResumen de actualización:");
+            System.out.printf("Precio actual: %.2f | Nuevo precio: %.2f%n", producto.getPrecio(), nuevoPrecio);
+            System.out.printf("Stock actual: %d | Stock a sumar: %d | Stock final: %d%n",
+                    producto.getStock(), stockASumar, nuevoStock);
+
+            String confirmar;
+            boolean entradaValidaConfirmar;
+            do {
+                System.out.print("¿Confirma la actualización? (s/n): ");
+                confirmar = scanner.nextLine().trim().toLowerCase();
+                entradaValidaConfirmar = confirmar.equals("s") || confirmar.equals("n");
+                if (!entradaValidaConfirmar) {
+                    System.out.println("Entrada inválida. Por favor, ingrese 's' para sí o 'n' para no.");
+                }
+            } while (!entradaValidaConfirmar);
+
+            if (confirmar.equals("s")) {
+                boolean actualizado = gestion.actualizarProducto(id, nuevoPrecio, nuevoStock);
+                if (actualizado) {
+                    System.out.println("Producto actualizado correctamente.");
+                } else {
+                    System.out.println("Error al actualizar producto. Verifique los valores.");
+                }
             } else {
-                System.out.println("Error al actualizar producto. Verifique los valores.");
+                System.out.println("Actualización cancelada.");
             }
         }
     }
@@ -139,10 +169,27 @@ public class SistemaGestion {
         }
     }
 
-    private static void crearPedido() {
-        System.out.println("\n--- Crear Pedido ---");
+    // Muestra productos con stock descontando lo ya agregado al pedido
+    private static void listarProductosConStockPedido(Pedido pedido) {
+        System.out.println("\n--- Lista de Productos ---");
         List<Producto> productos = gestion.listarProductos();
         if (productos.isEmpty()) {
+            System.out.println("No hay productos registrados.");
+            return;
+        }
+        for (Producto p : productos) {
+            int cantidadEnPedido = pedido.getCantidadProducto(p.getId());
+            int stockDisponible = p.getStock() - cantidadEnPedido;
+            System.out.printf("ID: %d | Nombre: %s | Precio: %.2f | Stock: %d\n",
+                    p.getId(), p.getNombre(), p.getPrecio(), stockDisponible);
+        }
+    }
+
+    // Usar la función anterior para mostrar stock actualizado
+    private static void crearPedido() {
+        System.out.println("\n--- Crear Pedido ---");
+
+        if (gestion.listarProductos().isEmpty()) {
             System.out.println("No hay productos disponibles para pedir.");
             return;
         }
@@ -151,31 +198,29 @@ public class SistemaGestion {
         boolean agregoAlgo = false;
 
         while (true) {
-            listarProductos();
+            listarProductosConStockPedido(pedido); // Muestra stock actualizado
             System.out.println("Ingrese ID del producto a agregar al pedido (o 0 para cancelar y salir): ");
             int idProducto = leerEntero("> ");
-            if (idProducto == 0) {
-                // Permite cancelar la carga del pedido en cualquier momento
-                break;
-            }
+            if (idProducto == 0) break;
+
             Producto producto = gestion.buscarProductoPorId(idProducto);
             if (producto == null) {
                 System.out.println("Producto no encontrado.");
                 continue;
             }
+            int cantidadEnPedido = pedido.getCantidadProducto(idProducto);
+            int stockDisponible = producto.getStock() - cantidadEnPedido;
+
             System.out.println("Producto seleccionado: " + producto);
             System.out.println("Ingrese cantidad deseada (o 0 para cancelar y salir): ");
             int cantidad = leerEntero("> ");
-            if (cantidad == 0) {
-                // Permite cancelar la carga del pedido en cualquier momento
-                break;
-            }
+            if (cantidad == 0) break;
             if (cantidad <= 0) {
                 System.out.println("Cantidad debe ser mayor a 0.");
                 continue;
             }
-            if (cantidad > producto.getStock()) {
-                System.out.println("No hay suficiente stock. Stock disponible: " + producto.getStock());
+            if (cantidad > stockDisponible) {
+                System.out.println("No hay suficiente stock. Stock disponible: " + stockDisponible);
                 continue;
             }
             boolean agregado = gestion.agregarLineaPedido(pedido, idProducto, cantidad);
@@ -186,10 +231,7 @@ public class SistemaGestion {
                 System.out.println("Error al agregar producto al pedido.");
             }
 
-            // Preguntar si desea agregar otro producto
-            if (!confirmarAccion("¿Desea agregar otro producto al pedido?")) {
-                break;
-            }
+            if (!confirmarAccion("¿Desea agregar otro producto al pedido?")) break;
         }
 
         if (!agregoAlgo || pedido.getLineas().isEmpty()) {

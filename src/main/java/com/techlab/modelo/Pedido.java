@@ -35,4 +35,15 @@ public class Pedido {
         }
         System.out.printf("Costo total: %.2f\n", calcularTotal());
     }
+
+    // MÉTODO NUEVO: Devuelve la cantidad de un producto ya agregada a este pedido
+    public int getCantidadProducto(int idProducto) {
+        int total = 0;
+        for (LineaPedido linea : lineas) {
+            if (linea.getProducto().getId() == idProducto) {
+                total += linea.getCantidad();
+            }
+        }
+        return total;
+    }
 }
